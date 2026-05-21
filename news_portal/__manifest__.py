@@ -1,14 +1,16 @@
 {
     'name': 'News Portal',
-    'version': '19.0.1.0.0',
+    'version': '19.0.2.0.0',
     'summary': 'Publish and manage news articles on your website',
     'description': """
         News Portal module for Odoo Website.
         - Create and manage news articles
         - Multiple images per news (gallery with main image switcher)
         - Publish / Unpublish from backend and frontend
-        - Dedicated /news website page
+        - Dedicated /news, /announcements, /pre-releases website pages
         - News detail page with interactive image gallery
+        - News types: News, Announcements, Pre-releases
+        - Multilingual website menu tabs (KZ, RU, EN)
     """,
     'category': 'Website',
     'author': 'Custom',
@@ -26,6 +28,7 @@
             'news_portal/static/src/js/news_gallery.js',
         ],
     },
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': True,
     'auto_install': False,

@@ -1,19 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+<!--
+  Hero title and breadcrumb label are driven by the `news_type` variable
+  passed from the controller. Odoo's t-call="website.layout" automatically
+  renders the website in the visitor's active language, so switching the
+  site language will also switch the menu tab names (handled via
+  website.menu translations set in hooks.py).
+
+  Section labels per type / language:
+    news          → Новости / Жаңалықтар / News
+    announcements → Объявления / Хабарландырулар / Announcements
+    pre_releases  → Пре-релизы / Алдын ала шығарылымдар / Pre-releases
+-->
+
 <!-- ═══════════════════════════════════════════════════
-     NEWS LIST PAGE  /news
+     SHARED LIST PAGE  — used for /news, /announcements, /pre-releases
 ════════════════════════════════════════════════════ -->
 <template id="news_list_page" name="News List">
     <t t-call="website.layout">
-        <t t-set="pageName" t-value="'news'"/>
+        <t t-set="pageName" t-value="news_type or 'news'"/>
         <div id="wrap" class="np-wrap">
 
-            <!-- Hero banner -->
+            <!-- Hero banner — title changes per type and language -->
             <section class="np-hero">
                 <div class="np-hero__inner">
-                    <h1 class="np-hero__title">Новости</h1>
-                    <p class="np-hero__sub">Последние события и публикации</p>
+
+                    <t t-if="news_type == 'announcements'">
+                        <h1 class="np-hero__title">
+                            <t t-esc="request.env['ir.ui.view']._render_str({'en_US': 'Announcements', 'ru_RU': 'Объявления', 'kk_KZ': 'Хабарландырулар'}.get(request.env.lang, 'Announcements'))"
+                               t-if="False"/>
+                            <!-- simple approach via lang -->
+                            <t t-if="request.env.lang == 'ru_RU'">Объявления</t>
+                            <t t-elif="request.env.lang == 'kk_KZ'">Хабарландырулар</t>
+                            <t t-else="">Announcements</t>
+                        </h1>
+                        <p class="np-hero__sub">
+                            <t t-if="request.env.lang == 'ru_RU'">Важные объявления и сообщения</t>
+                            <t t-elif="request.env.lang == 'kk_KZ'">Маңызды хабарландырулар мен хабарлар</t>
+                            <t t-else="">Important announcements and messages</t>
+                        </p>
+                    </t>
+
+                    <t t-elif="news_type == 'pre_releases'">
+                        <h1 class="np-hero__title">
+                            <t t-if="request.env.lang == 'ru_RU'">Пре-релизы</t>
+                            <t t-elif="request.env.lang == 'kk_KZ'">Алдын ала шығарылымдар</t>
+                            <t t-else="">Pre-releases</t>
+                        </h1>
+                        <p class="np-hero__sub">
+                            <t t-if="request.env.lang == 'ru_RU'">Предварительные выпуски и анонсы</t>
+                            <t t-elif="request.env.lang == 'kk_KZ'">Алдын ала шығарылымдар мен жарияланымдар</t>
+                            <t t-else="">Upcoming releases and previews</t>
+                        </p>
+                    </t>
+
+                    <t t-else="">
+                        <!-- default: news -->
+                        <h1 class="np-hero__title">
+                            <t t-if="request.env.lang == 'ru_RU'">Новости</t>
+                            <t t-elif="request.env.lang == 'kk_KZ'">Жаңалықтар</t>
+                            <t t-else="">News</t>
+                        </h1>
+                        <p class="np-hero__sub">
+                            <t t-if="request.env.lang == 'ru_RU'">Последние события и публикации</t>
+                            <t t-elif="request.env.lang == 'kk_KZ'">Соңғы оқиғалар мен жарияланымдар</t>
+                            <t t-else="">Latest events and publications</t>
+                        </p>
+                    </t>
+
                 </div>
             </section>
 
@@ -23,13 +78,17 @@
                     <t t-if="not posts">
                         <div class="np-empty">
                             <i class="fa fa-newspaper-o np-empty__icon"/>
-                            <p>Новостей пока нет</p>
+                            <p>
+                                <t t-if="request.env.lang == 'ru_RU'">Публикаций пока нет</t>
+                                <t t-elif="request.env.lang == 'kk_KZ'">Жарияланымдар әлі жоқ</t>
+                                <t t-else="">No posts yet</t>
+                            </p>
                         </div>
                     </t>
                     <div t-else="" class="np-grid">
                         <t t-foreach="posts" t-as="post">
-                            <a t-attf-href="/news/#{post.id}" class="np-card">
-                                <!-- Thumbnail (first image) -->
+                            <a t-attf-href="#{section_url}/#{post.id}" class="np-card">
+                                <!-- Thumbnail -->
                                 <div class="np-card__thumb">
                                     <t t-if="post.image_ids">
                                         <img t-attf-src="/web/image/news.post.image/#{post.image_ids[0].id}/image"
@@ -43,8 +102,7 @@
                                 </div>
                                 <!-- Meta -->
                                 <div class="np-card__body">
-                                    <time t-attf-datetime="#{post.date}"
-                                          class="np-card__date">
+                                    <time t-attf-datetime="#{post.date}" class="np-card__date">
                                         <t t-out="post.date.strftime('%d.%m.%Y')"/>
                                     </time>
                                     <h2 class="np-card__title" t-out="post.name"/>
@@ -57,67 +115,59 @@
             </section>
 
         </div>
-        <!-- Пагинация — добавить в конец news_list_page, ничего остального не менять -->
+
+        <!-- Pagination -->
         <t t-if="total_pages and total_pages > 1">
             <div class="news-pagination" style="display:flex; justify-content:center; align-items:center; gap:4px; margin:40px 0; flex-wrap:wrap;">
 
-                <!-- Кнопка «Назад» -->
                 <a t-if="page > 1"
-                t-attf-href="/news?page=#{page - 1}"
-                style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; color:#333;">
-                    ‹
-                </a>
+                   t-attf-href="#{section_url}?page=#{page - 1}"
+                   style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; color:#333;">&#8249;</a>
 
-                <!-- Первая страница -->
-                <a t-attf-href="/news?page=1"
-                t-attf-style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; #{' background:#d8b055; color:#fff; font-weight:bold;' if page == 1 else 'color:#333;'}">
-                    1
-                </a>
+                <a t-attf-href="#{section_url}?page=1"
+                   t-attf-style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; #{'background:#d8b055; color:#fff; font-weight:bold;' if page == 1 else 'color:#333;'}">1</a>
 
-                <!-- Многоточие слева -->
-                <span t-if="page > 4"
-                    style="padding:6px 8px; color:#999;">…</span>
+                <span t-if="page > 4" style="padding:6px 8px; color:#999;">&#8230;</span>
 
-                <!-- Страницы вокруг текущей (кроме первой и последней) -->
                 <t t-foreach="range(2, total_pages)" t-as="p">
                     <t t-if="p >= page - 2 and p &lt;= page + 2">
-                        <a t-attf-href="/news?page=#{p}"
-                        t-attf-style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; #{'background:#d8b055; color:#fff; font-weight:bold;' if p == page else 'color:#333;'}">
+                        <a t-attf-href="#{section_url}?page=#{p}"
+                           t-attf-style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; #{'background:#d8b055; color:#fff; font-weight:bold;' if p == page else 'color:#333;'}">
                             <t t-esc="p"/>
                         </a>
                     </t>
                 </t>
 
-                <!-- Многоточие справа -->
-                <span t-if="page &lt; total_pages - 3"
-                    style="padding:6px 8px; color:#999;">…</span>
+                <span t-if="page &lt; total_pages - 3" style="padding:6px 8px; color:#999;">&#8230;</span>
 
-                <!-- Последняя страница -->
                 <a t-if="total_pages > 1"
-                t-attf-href="/news?page=#{total_pages}"
-                t-attf-style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; #{'background:#d8b055; color:#fff; font-weight:bold;' if page == total_pages else 'color:#333;'}">
+                   t-attf-href="#{section_url}?page=#{total_pages}"
+                   t-attf-style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; #{'background:#d8b055; color:#fff; font-weight:bold;' if page == total_pages else 'color:#333;}">
                     <t t-esc="total_pages"/>
                 </a>
 
-                <!-- Кнопка «Вперёд» -->
                 <a t-if="page &lt; total_pages"
-                t-attf-href="/news?page=#{page + 1}"
-                style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; color:#333;">
-                    ›
-                </a>
+                   t-attf-href="#{section_url}?page=#{page + 1}"
+                   style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; color:#333;">&#8250;</a>
 
             </div>
             <p style="text-align:center; color:#999; font-size:13px; margin-bottom:30px;">
-                Страница <t t-esc="page"/> из <t t-esc="total_pages"/>
+                <t t-if="request.env.lang == 'ru_RU'">Страница </t>
+                <t t-elif="request.env.lang == 'kk_KZ'">Бет </t>
+                <t t-else="">Page </t>
+                <t t-esc="page"/>
+                <t t-if="request.env.lang == 'ru_RU'"> из </t>
+                <t t-elif="request.env.lang == 'kk_KZ'"> / </t>
+                <t t-else=""> of </t>
+                <t t-esc="total_pages"/>
             </p>
         </t>
     </t>
-    
 </template>
 
 
 <!-- ═══════════════════════════════════════════════════
-     NEWS DETAIL PAGE  /news/<id>
+     NEWS DETAIL PAGE  — shared for all types
 ════════════════════════════════════════════════════ -->
 <template id="news_detail_page" name="News Detail">
     <t t-call="website.layout">
@@ -127,7 +177,23 @@
             <!-- Breadcrumb -->
             <div class="np-breadcrumb">
                 <div class="np-container">
-                    <a href="/news">Новости</a>
+                    <a t-att-href="section_url">
+                        <t t-if="news_type == 'announcements'">
+                            <t t-if="request.env.lang == 'ru_RU'">Объявления</t>
+                            <t t-elif="request.env.lang == 'kk_KZ'">Хабарландырулар</t>
+                            <t t-else="">Announcements</t>
+                        </t>
+                        <t t-elif="news_type == 'pre_releases'">
+                            <t t-if="request.env.lang == 'ru_RU'">Пре-релизы</t>
+                            <t t-elif="request.env.lang == 'kk_KZ'">Алдын ала шығарылымдар</t>
+                            <t t-else="">Pre-releases</t>
+                        </t>
+                        <t t-else="">
+                            <t t-if="request.env.lang == 'ru_RU'">Новости</t>
+                            <t t-elif="request.env.lang == 'kk_KZ'">Жаңалықтар</t>
+                            <t t-else="">News</t>
+                        </t>
+                    </a>
                     <span class="np-breadcrumb__sep">/</span>
                     <span t-out="post.name"/>
                 </div>
@@ -144,23 +210,19 @@
                     <h1 class="np-article__title" t-out="post.name"/>
                 </header>
 
-                <!-- Gallery (only when images exist) -->
+                <!-- Gallery -->
                 <t t-if="images">
 
-                    <!-- ══ РЕЖИМ: основное + миниатюры СПРАВА ══ -->
+                    <!-- MODE: main + thumbnails on the RIGHT -->
                     <t t-if="layout == 'side' or not layout">
                         <div class="news-gallery-side"
                             t-attf-style="display:flex; gap:8px; width:100%; margin-bottom:24px;">
-
-                            <!-- Основное фото -->
                             <div t-attf-style="width:#{main_w or 70}%; flex-shrink:0;">
                                 <img id="news-main-img"
                                     t-attf-src="/web/image/news.post.image/#{images[0].id}/image"
                                     style="width:100%; height:500px; object-fit:cover; border-radius:6px; cursor:pointer;"
                                     alt=""/>
                             </div>
-
-                            <!-- Миниатюры справа -->
                             <div t-attf-style="width:#{100 - (main_w or 70)}%; display:flex; flex-direction:column; gap:6px; overflow-y:auto; max-height:500px;">
                                 <t t-foreach="images" t-as="img">
                                     <img t-attf-src="/web/image/news.post.image/#{img.id}/image"
@@ -174,17 +236,13 @@
                         </div>
                     </t>
 
-                    <!-- ══ РЕЖИМ: основное + миниатюры СНИЗУ ══ -->
+                    <!-- MODE: main + thumbnails BELOW -->
                     <t t-if="layout == 'bottom'">
                         <div style="width:100%; margin-bottom:24px;">
-
-                            <!-- Основное фото -->
                             <img id="news-main-img"
                                 t-attf-src="/web/image/news.post.image/#{images[0].id}/image"
                                 t-attf-style="width:100%; height:#{main_h or 500}px; object-fit:cover; border-radius:6px; cursor:pointer; margin-bottom:10px;"
                                 alt=""/>
-
-                            <!-- Миниатюры снизу — горизонтальный скролл -->
                             <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px;">
                                 <t t-foreach="images" t-as="img">
                                     <img t-attf-src="/web/image/news.post.image/#{img.id}/image"
@@ -200,19 +258,17 @@
 
                 </t>
 
-                <!-- JS переключения фото -->
+                <!-- Gallery JS -->
                 <script>
                 function newsGallerySwitch(thumb) {
                     var mainImg = document.getElementById('news-main-img');
                     if (!mainImg) return;
                     var oldSrc = mainImg.src;
                     var newSrc = thumb.dataset.src;
-                    // Подсветка активной миниатюры
                     document.querySelectorAll('[data-index]').forEach(function(el) {
                         el.style.border = '2px solid transparent';
                     });
                     thumb.style.border = '2px solid #d8b055';
-                    // Плавная смена
                     mainImg.style.opacity = '0';
                     mainImg.style.transition = 'opacity 0.2s';
                     setTimeout(function() {

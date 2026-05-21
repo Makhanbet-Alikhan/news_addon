@@ -2,6 +2,7 @@
 <odoo>
     <data>
 
+        <!-- ── App icon menu ── -->
         <menuitem id="menu_news_main_app"
                   name="News"
                   sequence="150"
@@ -12,11 +13,31 @@
                   parent="menu_news_main_app"
                   sequence="10"/>
 
+        <!-- All posts -->
         <menuitem id="menu_news_all_posts"
-                  name="All News"
+                  name="All Posts"
                   parent="menu_news_submenu"
                   action="news_portal.action_news_post"
+                  sequence="5"/>
+
+        <!-- By type -->
+        <menuitem id="menu_news_type_news"
+                  name="News"
+                  parent="menu_news_submenu"
+                  action="news_portal.action_news_post_type_news"
                   sequence="10"/>
+
+        <menuitem id="menu_news_type_announcements"
+                  name="Announcements"
+                  parent="menu_news_submenu"
+                  action="news_portal.action_news_post_type_announcements"
+                  sequence="20"/>
+
+        <menuitem id="menu_news_type_pre_releases"
+                  name="Pre-releases"
+                  parent="menu_news_submenu"
+                  action="news_portal.action_news_post_type_pre_releases"
+                  sequence="30"/>
 
     </data>
 </odoo>

@@ -1,6 +1,19 @@
 from odoo import models, fields, api
-from odoo.http import request
 import re
+
+
+NEWS_TYPE_SELECTION = [
+    ('news', 'News'),
+    ('announcements', 'Announcements'),
+    ('pre_releases', 'Pre-releases'),
+]
+
+# Maps news_type value -> website URL prefix
+TYPE_URL = {
+    'news': '/news',
+    'announcements': '/announcements',
+    'pre_releases': '/pre-releases',
+}
 
 
 class NewsPost(models.Model):
@@ -9,6 +22,7 @@ class NewsPost(models.Model):
     _order = 'date desc, id desc'
     _inherit = ['website.published.mixin']
 
+    # ── Gallery settings ──────────────────────────────────────
     gallery_layout = fields.Selection([
         ('side', 'Основное + миниатюры справа'),
         ('bottom', 'Основное + миниатюры снизу'),
@@ -38,9 +52,19 @@ class NewsPost(models.Model):
         help='Высота миниатюр в пикселях (используется в режиме "снизу")'
     )
 
+    # ── Main fields ───────────────────────────────────────────
     name = fields.Char(string='Title', required=True, translate=True)
     date = fields.Date(string='Publication Date', required=True, default=fields.Date.today)
     content = fields.Html(string='Content', required=True, translate=True, sanitize=False)
+
+    news_type = fields.Selection(
+        selection=NEWS_TYPE_SELECTION,
+        string='News Type',
+        required=True,
+        default='news',
+        help='Type determines which section this post appears in on the website.'
+    )
+
     image_ids = fields.One2many('news.post.image', 'post_id', string='Images')
     main_image = fields.Binary(
         string='Main Image',
@@ -51,13 +75,14 @@ class NewsPost(models.Model):
 
     website_url = fields.Char(compute='_compute_website_url', store=True)
 
-    @api.depends('name')
+    @api.depends('name', 'news_type')
     def _compute_website_url(self):
         for rec in self:
+            base = TYPE_URL.get(rec.news_type or 'news', '/news')
             if rec.id:
-                rec.website_url = '/news/%d' % rec.id
+                rec.website_url = '%s/%d' % (base, rec.id)
             else:
-                rec.website_url = '/news'
+                rec.website_url = base
 
     @api.depends('image_ids', 'image_ids.image', 'image_ids.sequence')
     def _compute_main_image(self):
@@ -76,10 +101,10 @@ class NewsPost(models.Model):
         return {
             'type': 'ir.actions.act_url',
             'url': self.website_url,
-            'target': 'new',   # открывается в новой вкладке
+            'target': 'new',
         }
 
-    # Автоматический отрывок из content (без HTML тегов, первые 160 символов)
+    # ── Excerpt ───────────────────────────────────────────────
     excerpt = fields.Char(
         string='Excerpt',
         compute='_compute_excerpt',
@@ -90,11 +115,8 @@ class NewsPost(models.Model):
     def _compute_excerpt(self):
         for rec in self:
             raw = rec.content or ''
-            # Убираем HTML теги
             clean = re.sub(r'<[^>]+>', ' ', raw)
-            # Убираем лишние пробелы
             clean = re.sub(r'\s+', ' ', clean).strip()
-            # Обрезаем до 160 символов
             if len(clean) > 160:
                 clean = clean[:157] + '...'
             rec.excerpt = clean
