@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <menuitem id="menu_news_main_app"
+                  name="News"
+                  sequence="150"
+                  web_icon="news_portal,static/description/icon.svg"/>
+
+        <menuitem id="menu_news_submenu"
+                  name="News"
+                  parent="menu_news_main_app"
+                  sequence="10"/>
+
+        <menuitem id="menu_news_all_posts"
+                  name="All News"
+                  parent="menu_news_submenu"
+                  action="news_portal.action_news_post"
+                  sequence="10"/>
+
+    </data>
+</odoo>
