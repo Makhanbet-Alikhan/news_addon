@@ -1,9 +1,14 @@
 import re
 import base64
+import hashlib
+import hmac
 import json
 import logging
+import time
 import urllib.request
 import urllib.error
+import urllib.parse
+import uuid
 
 from odoo import models, fields, api
 
@@ -20,35 +25,32 @@ TYPE_URL = {
     'pre_releases':  '/pre-releases',
 }
 
-# Max photos per platform
-TELEGRAM_MAX_PHOTOS  = 10   # Bot API hard limit for sendMediaGroup
-FACEBOOK_MAX_PHOTOS  = 10   # Graph API practical limit
-INSTAGRAM_MAX_PHOTOS = 10   # Carousel limit
-TWITTER_MAX_PHOTOS   = 4    # Twitter API v2 hard limit
+TELEGRAM_MAX  = 10
+FACEBOOK_MAX  = 10
+INSTAGRAM_MAX = 10
+TWITTER_MAX   = 4
 
 
 # ---------------------------------------------------------------------------
-# Lightweight multipart helper — no external dependencies
+# HTTP helpers (stdlib only, zero external dependencies)
 # ---------------------------------------------------------------------------
 
 def _multipart_post(url, fields, files=None):
     """
-    POST multipart/form-data using only stdlib urllib.
-    fields: dict of str->str
-    files:  dict of name -> (filename, bytes, content_type)
+    POST multipart/form-data.
+    fields: {name: str}
+    files:  {name: (filename, bytes, content_type)}
     Returns (status_code, response_dict)
     """
     import secrets
     boundary = b'----DPFBound' + secrets.token_hex(8).encode()
     crlf = b'\r\n'
     parts = []
-
     for name, value in fields.items():
         parts += [
             b'--' + boundary,
             ('Content-Disposition: form-data; name="%s"' % name).encode(),
-            b'',
-            str(value).encode('utf-8'),
+            b'', str(value).encode('utf-8'),
         ]
     if files:
         for name, (filename, file_bytes, ctype) in files.items():
@@ -56,45 +58,94 @@ def _multipart_post(url, fields, files=None):
                 b'--' + boundary,
                 ('Content-Disposition: form-data; name="%s"; filename="%s"' % (name, filename)).encode(),
                 ('Content-Type: %s' % ctype).encode(),
-                b'',
-                file_bytes,
+                b'', file_bytes,
             ]
     parts.append(b'--' + boundary + b'--')
     body = crlf.join(parts)
-
     req = urllib.request.Request(url, data=body, method='POST')
     req.add_header('Content-Type', 'multipart/form-data; boundary=%s' % boundary.decode())
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return resp.status, json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        body_err = {}
-        try:
-            body_err = json.loads(e.read())
-        except Exception:
-            pass
-        return e.code, body_err
-    except Exception as exc:
-        return 0, {'error': str(exc)}
+    return _do_request(req)
 
 
-def _json_post(url, payload_dict):
-    """POST application/json using stdlib urllib. Returns (status, dict)."""
-    payload = json.dumps(payload_dict).encode('utf-8')
-    req = urllib.request.Request(url, data=payload, method='POST')
+def _json_post(url, payload, headers=None):
+    """POST application/json. Returns (status, dict)."""
+    data = json.dumps(payload).encode('utf-8')
+    req  = urllib.request.Request(url, data=data, method='POST')
     req.add_header('Content-Type', 'application/json')
+    for k, v in (headers or {}).items():
+        req.add_header(k, v)
+    return _do_request(req)
+
+
+def _http_get(url, headers=None):
+    """GET request. Returns (status, dict)."""
+    req = urllib.request.Request(url, method='GET')
+    for k, v in (headers or {}).items():
+        req.add_header(k, v)
+    return _do_request(req)
+
+
+def _do_request(req):
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return resp.status, json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body_err = {}
+        body = {}
         try:
-            body_err = json.loads(e.read())
+            body = json.loads(e.read())
         except Exception:
             pass
-        return e.code, body_err
+        return e.code, body
     except Exception as exc:
         return 0, {'error': str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# OAuth 1.0a signing helper for Twitter
+# ---------------------------------------------------------------------------
+
+def _oauth1_header(method, url, params, api_key, api_secret, token, token_secret):
+    """
+    Build OAuth 1.0a Authorization header (HMAC-SHA1) using only stdlib.
+    """
+    nonce     = uuid.uuid4().hex
+    timestamp = str(int(time.time()))
+
+    oauth_params = {
+        'oauth_consumer_key':     api_key,
+        'oauth_nonce':            nonce,
+        'oauth_signature_method': 'HMAC-SHA1',
+        'oauth_timestamp':        timestamp,
+        'oauth_token':            token,
+        'oauth_version':          '1.0',
+    }
+
+    all_params = {}
+    all_params.update(params)
+    all_params.update(oauth_params)
+
+    sorted_params = '&'.join(
+        '%s=%s' % (urllib.parse.quote(str(k), safe=''), urllib.parse.quote(str(v), safe=''))
+        for k, v in sorted(all_params.items())
+    )
+    base_string = '&'.join([
+        method.upper(),
+        urllib.parse.quote(url, safe=''),
+        urllib.parse.quote(sorted_params, safe=''),
+    ])
+    signing_key = '%s&%s' % (
+        urllib.parse.quote(api_secret, safe=''),
+        urllib.parse.quote(token_secret, safe=''),
+    )
+    signature = base64.b64encode(
+        hmac.new(signing_key.encode('utf-8'), base_string.encode('utf-8'), hashlib.sha1).digest()
+    ).decode()
+    oauth_params['oauth_signature'] = signature
+
+    return 'OAuth ' + ', '.join(
+        '%s="%s"' % (urllib.parse.quote(k, safe=''), urllib.parse.quote(v, safe=''))
+        for k, v in sorted(oauth_params.items())
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +158,6 @@ class NewsPost(models.Model):
     _order       = 'date desc, id desc'
     _inherit     = ['website.published.mixin']
 
-    # ── Core fields ──────────────────────────────────────────────────────────
     name    = fields.Char(string='Title', required=True, translate=True)
     date    = fields.Date(string='Publication Date', required=True, default=fields.Date.today)
     content = fields.Html(
@@ -123,7 +173,6 @@ class NewsPost(models.Model):
     main_image       = fields.Binary(compute='_compute_main_image', store=False)
     main_image_fname = fields.Char(compute='_compute_main_image', store=False)
 
-    # ── Gallery settings ─────────────────────────────────────────────────────
     gallery_layout    = fields.Selection([
         ('side',   'Main + thumbnails on the right'),
         ('bottom', 'Main + thumbnails below'),
@@ -132,10 +181,8 @@ class NewsPost(models.Model):
     main_image_height = fields.Integer(string='Main Photo Height (px)', default=500)
     thumb_height      = fields.Integer(string='Thumbnail Height (px)',  default=120)
 
-    # ── Social publishing ─────────────────────────────────────────────────────
     social_auto_publish = fields.Boolean(
         string='Auto-publish to Social Media', default=True,
-        help='When enabled, publishing this post will automatically send it to all active social channels.',
     )
     social_log_ids = fields.One2many('news.social.log', 'post_id', string='Social Publish Log')
     social_status  = fields.Selection([
@@ -145,7 +192,7 @@ class NewsPost(models.Model):
         ('error',    'Error'),
     ], string='Social Status', default='not_sent', compute='_compute_social_status', store=True)
 
-    # ── Computes ──────────────────────────────────────────────────────────────
+    # ── Computes ──
     @api.depends('name', 'news_type')
     def _compute_website_url(self):
         for rec in self:
@@ -180,7 +227,7 @@ class NewsPost(models.Model):
             else:
                 rec.social_status = 'error'
 
-    # ── Publish button ────────────────────────────────────────────────────────
+    # ── Publish ──
     def website_publish_button(self):
         self.ensure_one()
         was_published = self.is_published
@@ -197,15 +244,15 @@ class NewsPost(models.Model):
     def action_open_social_wizard(self):
         self.ensure_one()
         return {
-            'type':      'ir.actions.act_window',
-            'name':      'Publish to Social Media',
+            'type': 'ir.actions.act_window',
+            'name': 'Publish to Social Media',
             'res_model': 'news.social.preview.wizard',
             'view_mode': 'form',
-            'target':    'new',
-            'context':   {'default_post_id': self.id},
+            'target': 'new',
+            'context': {'default_post_id': self.id},
         }
 
-    # ── Social dispatcher ─────────────────────────────────────────────────────
+    # ── Dispatcher ──
     def _social_publish_all(self):
         self.ensure_one()
         config = self.env['dpf.social.config'].sudo()._get_config()
@@ -214,13 +261,13 @@ class NewsPost(models.Model):
         if config.telegram_enabled:
             self._publish_telegram(config)
         if config.facebook_enabled:
-            self._publish_via_odoo_social(config, 'facebook')
+            self._publish_facebook(config)
         if config.instagram_enabled:
-            self._publish_via_odoo_social(config, 'instagram')
+            self._publish_instagram(config)
         if config.twitter_enabled:
-            self._publish_via_odoo_social(config, 'twitter')
+            self._publish_twitter(config)
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
+    # ── Helpers ──
     def _build_caption(self, max_len=2000):
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url', '')
         url      = base_url.rstrip('/') + self.website_url
@@ -235,8 +282,8 @@ class NewsPost(models.Model):
             'message': message or '',
         })
 
-    def _get_image_bytes(self, limit=10):
-        """Return list of raw bytes for sorted images, up to `limit`."""
+    def _get_image_bytes(self, limit):
+        """Return list of (raw_bytes,) tuples for each image up to limit."""
         result = []
         for img in self.image_ids.sorted('sequence')[:limit]:
             if img.image:
@@ -247,7 +294,7 @@ class NewsPost(models.Model):
         return result
 
     # =========================================================================
-    # Telegram — sendPhoto (1 image) / sendMediaGroup (2-10 images)
+    # TELEGRAM  —  Bot API (100% free, no Enterprise needed)
     # =========================================================================
     def _publish_telegram(self, config):
         token   = config.telegram_bot_token
@@ -256,143 +303,283 @@ class NewsPost(models.Model):
             self._log_social('telegram', 'error', 'Bot token or chat_id not configured')
             return
 
-        caption    = self._build_caption(max_len=1024)
-        img_bytes_list = self._get_image_bytes(limit=TELEGRAM_MAX_PHOTOS)
+        caption  = self._build_caption(max_len=1024)
+        img_list = self._get_image_bytes(TELEGRAM_MAX)
 
         try:
-            # ── No images → plain text message ───────────────────────────────
-            if not img_bytes_list:
+            if not img_list:
                 _, resp = _json_post(
                     'https://api.telegram.org/bot%s/sendMessage' % token,
                     {'chat_id': chat_id, 'text': caption, 'parse_mode': 'HTML'},
                 )
-                if resp.get('ok'):
-                    self._log_social('telegram', 'sent', 'OK (text message)')
-                else:
-                    self._log_social('telegram', 'error', str(resp))
-                return
-
-            # ── 1 image → sendPhoto ───────────────────────────────────────────
-            if len(img_bytes_list) == 1:
+                ok_key = 'ok'
+            elif len(img_list) == 1:
                 _, resp = _multipart_post(
                     'https://api.telegram.org/bot%s/sendPhoto' % token,
                     fields={'chat_id': chat_id, 'caption': caption, 'parse_mode': 'HTML'},
-                    files={'photo': ('photo.jpg', img_bytes_list[0], 'image/jpeg')},
+                    files={'photo': ('photo.jpg', img_list[0], 'image/jpeg')},
                 )
-                if resp.get('ok'):
-                    mid = resp.get('result', {}).get('message_id', '')
-                    self._log_social('telegram', 'sent', 'OK (1 photo, message_id=%s)' % mid)
-                else:
-                    self._log_social('telegram', 'error', str(resp))
-                return
-
-            # ── 2-10 images → sendMediaGroup (album) ─────────────────────────
-            media = []
-            files = {}
-            for idx, img_b in enumerate(img_bytes_list):
-                key = 'photo%d' % idx
-                files[key] = ('photo%d.jpg' % idx, img_b, 'image/jpeg')
-                item = {'type': 'photo', 'media': 'attach://%s' % key}
-                if idx == 0:                          # caption only on first item
-                    item['caption']    = caption
-                    item['parse_mode'] = 'HTML'
-                media.append(item)
-
-            _, resp = _multipart_post(
-                'https://api.telegram.org/bot%s/sendMediaGroup' % token,
-                fields={'chat_id': chat_id, 'media': json.dumps(media)},
-                files=files,
-            )
-            if resp.get('ok'):
-                self._log_social(
-                    'telegram', 'sent',
-                    'OK (album of %d photos)' % len(img_bytes_list),
+                ok_key = 'ok'
+            else:
+                media = []
+                files = {}
+                for i, b in enumerate(img_list):
+                    k = 'photo%d' % i
+                    files[k] = ('photo%d.jpg' % i, b, 'image/jpeg')
+                    item = {'type': 'photo', 'media': 'attach://%s' % k}
+                    if i == 0:
+                        item['caption']    = caption
+                        item['parse_mode'] = 'HTML'
+                    media.append(item)
+                _, resp = _multipart_post(
+                    'https://api.telegram.org/bot%s/sendMediaGroup' % token,
+                    fields={'chat_id': chat_id, 'media': json.dumps(media)},
+                    files=files,
                 )
+                ok_key = 'ok'
+
+            if resp.get(ok_key):
+                self._log_social('telegram', 'sent', 'OK (%d photo(s))' % len(img_list))
             else:
                 self._log_social('telegram', 'error', str(resp))
-
         except Exception as e:
-            _logger.error('DPF News Telegram publish error: %s', e)
+            _logger.error('DPF Telegram error: %s', e)
             self._log_social('telegram', 'error', str(e))
 
     # =========================================================================
-    # Facebook / Instagram / Twitter — via Odoo Social Marketing module
-    # All available images are attached as ir.attachment records.
+    # FACEBOOK  —  Graph API v19  (free, Page Access Token)
+    # Sends all photos as a multi-image post using attached_media
     # =========================================================================
-    def _publish_via_odoo_social(self, config, platform):
-        SocialPost = self.env.get('social.post')
-        if SocialPost is None:
-            self._log_social(
-                platform, 'error',
-                'Odoo Social Marketing app (social_media) is not installed. '
-                'Install it from Apps → Social Marketing to enable %s publishing.' % platform.capitalize(),
-            )
+    def _publish_facebook(self, config):
+        page_id    = config.facebook_page_id
+        page_token = config.facebook_page_token
+        if not page_id or not page_token:
+            self._log_social('facebook', 'error', 'Page ID or Page Access Token not configured')
             return
 
-        media_type_map = {'facebook': 'facebook', 'instagram': 'instagram', 'twitter': 'twitter'}
-        account = self.env['social.account'].sudo().search([
-            ('media_type', '=', media_type_map.get(platform, platform)),
-            ('has_account_link', '=', True),
-        ], limit=1)
-
-        if not account:
-            self._log_social(
-                platform, 'error',
-                'No connected %s account found in Social Marketing → Accounts.' % platform.capitalize(),
-            )
-            return
-
-        # Limit per platform
-        limits = {
-            'facebook':  FACEBOOK_MAX_PHOTOS,
-            'instagram': INSTAGRAM_MAX_PHOTOS,
-            'twitter':   TWITTER_MAX_PHOTOS,
-        }
-        max_photos = limits.get(platform, 4)
-        images     = self.image_ids.sorted('sequence')[:max_photos]
-
-        caption = self._build_caption(max_len=2000)
-        vals = {
-            'message':     caption,
-            'account_ids': [(4, account.id)],
-            'state':       'posted',
-        }
-
-        # Create one ir.attachment per image and link them all to social.post
-        attachments = []
-        for idx, img in enumerate(images):
-            if not img.image:
-                continue
-            try:
-                att = self.env['ir.attachment'].sudo().create({
-                    'name':      'news_%d_%s_%d.jpg' % (self.id, platform, idx),
-                    'datas':     img.image,
-                    'res_model': 'news.post',
-                    'res_id':    self.id,
-                    'mimetype':  'image/jpeg',
-                })
-                attachments.append(att)
-            except Exception as e:
-                _logger.warning('DPF News: Could not create attachment %d for %s: %s', idx, platform, e)
-
-        if attachments:
-            vals['image_ids'] = [(4, att.id) for att in attachments]
+        img_list = self._get_image_bytes(FACEBOOK_MAX)
+        caption  = self._build_caption(max_len=2000)
+        base_url = 'https://graph.facebook.com/v19.0'
 
         try:
-            post = SocialPost.sudo().create(vals)
-            self._log_social(
-                platform, 'sent',
-                'social.post id=%d (%d image(s))' % (post.id, len(attachments)),
+            if not img_list:
+                # Text-only post
+                _, resp = _json_post(
+                    '%s/%s/feed' % (base_url, page_id),
+                    {'message': caption, 'access_token': page_token},
+                )
+                if 'id' in resp:
+                    self._log_social('facebook', 'sent', 'post_id=%s' % resp['id'])
+                else:
+                    self._log_social('facebook', 'error', str(resp))
+                return
+
+            if len(img_list) == 1:
+                # Single photo post
+                _, resp = _multipart_post(
+                    '%s/%s/photos' % (base_url, page_id),
+                    fields={'caption': caption, 'access_token': page_token},
+                    files={'source': ('photo.jpg', img_list[0], 'image/jpeg')},
+                )
+                if 'id' in resp:
+                    self._log_social('facebook', 'sent', 'photo_id=%s' % resp['id'])
+                else:
+                    self._log_social('facebook', 'error', str(resp))
+                return
+
+            # Multiple photos → upload each unpublished, then post together
+            photo_ids = []
+            for i, img_b in enumerate(img_list):
+                _, r = _multipart_post(
+                    '%s/%s/photos' % (base_url, page_id),
+                    fields={'published': 'false', 'access_token': page_token},
+                    files={'source': ('photo%d.jpg' % i, img_b, 'image/jpeg')},
+                )
+                if 'id' in r:
+                    photo_ids.append(r['id'])
+                else:
+                    _logger.warning('DPF Facebook: photo %d upload failed: %s', i, r)
+
+            if not photo_ids:
+                self._log_social('facebook', 'error', 'All photo uploads failed')
+                return
+
+            attached = [{'media_fbid': pid} for pid in photo_ids]
+            _, resp = _json_post(
+                '%s/%s/feed' % (base_url, page_id),
+                {'message': caption, 'attached_media': attached, 'access_token': page_token},
             )
+            if 'id' in resp:
+                self._log_social(
+                    'facebook', 'sent',
+                    'post_id=%s (%d photos)' % (resp['id'], len(photo_ids)),
+                )
+            else:
+                self._log_social('facebook', 'error', str(resp))
+
         except Exception as e:
-            # Clean up orphan attachments on failure
-            for att in attachments:
-                try:
-                    att.sudo().unlink()
-                except Exception:
-                    pass
-            _logger.error('DPF News social post (%s) error: %s', platform, e)
-            self._log_social(platform, 'error', str(e))
+            _logger.error('DPF Facebook error: %s', e)
+            self._log_social('facebook', 'error', str(e))
+
+    # =========================================================================
+    # INSTAGRAM  —  Graph API v19  (free, Business account + Page token)
+    # Single image: create media container → publish
+    # Multiple images: create item containers → carousel container → publish
+    # NOTE: Instagram API requires publicly accessible image URLs.
+    #       On localhost use ngrok: https://ngrok.com
+    # =========================================================================
+    def _publish_instagram(self, config):
+        ig_id      = config.instagram_account_id
+        page_token = config.instagram_page_token
+        if not ig_id or not page_token:
+            self._log_social('instagram', 'error', 'Instagram Account ID or Page Token not configured')
+            return
+
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url', '').rstrip('/')
+        img_list = self.image_ids.sorted('sequence')[:INSTAGRAM_MAX]
+        caption  = self._build_caption(max_len=2200)
+        api_base = 'https://graph.facebook.com/v19.0'
+
+        if not img_list:
+            self._log_social('instagram', 'error', 'Instagram requires at least 1 image')
+            return
+
+        try:
+            def _img_url(img_rec):
+                """Build public URL for the image."""
+                return '%s/web/image/news.post.image/%d/image' % (base_url, img_rec.id)
+
+            if len(img_list) == 1:
+                image_url = _img_url(img_list[0])
+                _, r = _json_post(
+                    '%s/%s/media' % (api_base, ig_id),
+                    {'image_url': image_url, 'caption': caption, 'access_token': page_token},
+                )
+                container_id = r.get('id')
+                if not container_id:
+                    self._log_social('instagram', 'error', 'Container creation failed: %s' % r)
+                    return
+            else:
+                # Step 1: create item containers
+                item_ids = []
+                for img_rec in img_list:
+                    image_url = _img_url(img_rec)
+                    _, r = _json_post(
+                        '%s/%s/media' % (api_base, ig_id),
+                        {'image_url': image_url, 'is_carousel_item': 'true', 'access_token': page_token},
+                    )
+                    if 'id' in r:
+                        item_ids.append(r['id'])
+                    else:
+                        _logger.warning('DPF Instagram: item container failed: %s', r)
+
+                if not item_ids:
+                    self._log_social('instagram', 'error', 'All item containers failed')
+                    return
+
+                # Step 2: create carousel container
+                _, r = _json_post(
+                    '%s/%s/media' % (api_base, ig_id),
+                    {
+                        'media_type':   'CAROUSEL',
+                        'children':     ','.join(item_ids),
+                        'caption':      caption,
+                        'access_token': page_token,
+                    },
+                )
+                container_id = r.get('id')
+                if not container_id:
+                    self._log_social('instagram', 'error', 'Carousel container failed: %s' % r)
+                    return
+
+            # Step final: publish
+            _, pub = _json_post(
+                '%s/%s/media_publish' % (api_base, ig_id),
+                {'creation_id': container_id, 'access_token': page_token},
+            )
+            if 'id' in pub:
+                self._log_social(
+                    'instagram', 'sent',
+                    'media_id=%s (%d image(s))' % (pub['id'], len(img_list)),
+                )
+            else:
+                self._log_social('instagram', 'error', str(pub))
+
+        except Exception as e:
+            _logger.error('DPF Instagram error: %s', e)
+            self._log_social('instagram', 'error', str(e))
+
+    # =========================================================================
+    # TWITTER / X  —  API v2  (free tier, OAuth 1.0a, up to 4 images)
+    # Uses stdlib hmac for signature — no external OAuth libs needed
+    # =========================================================================
+    def _publish_twitter(self, config):
+        api_key       = config.twitter_api_key
+        api_secret    = config.twitter_api_secret
+        access_token  = config.twitter_access_token
+        token_secret  = config.twitter_access_token_secret
+
+        if not all([api_key, api_secret, access_token, token_secret]):
+            self._log_social('twitter', 'error', 'Twitter API credentials not fully configured')
+            return
+
+        caption  = self._build_caption(max_len=280)
+        img_list = self._get_image_bytes(TWITTER_MAX)
+
+        try:
+            media_ids = []
+            for i, img_b in enumerate(img_list):
+                # Upload via v1.1 media/upload (v2 doesn't have its own upload endpoint)
+                upload_url = 'https://upload.twitter.com/1.1/media/upload.json'
+                auth_hdr = _oauth1_header(
+                    'POST', upload_url, {},
+                    api_key, api_secret, access_token, token_secret,
+                )
+                _, r = _multipart_post(
+                    upload_url,
+                    fields={'Authorization': auth_hdr},  # passed as header below
+                    files={'media': ('photo%d.jpg' % i, img_b, 'image/jpeg')},
+                )
+                # Re-do with proper header
+                import secrets as _sec
+                boundary = b'----TwBound' + _sec.token_hex(4).encode()
+                body = (b'--' + boundary + b'\r\n'
+                        b'Content-Disposition: form-data; name="media"; filename="photo.jpg"\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' +
+                        img_b + b'\r\n' + b'--' + boundary + b'--')
+                req = urllib.request.Request(upload_url, data=body, method='POST')
+                req.add_header('Authorization', auth_hdr)
+                req.add_header('Content-Type', 'multipart/form-data; boundary=%s' % boundary.decode())
+                _, r = _do_request(req)
+                mid = r.get('media_id_string')
+                if mid:
+                    media_ids.append(mid)
+                else:
+                    _logger.warning('DPF Twitter media upload %d failed: %s', i, r)
+
+            # Post tweet via API v2
+            tweet_url = 'https://api.twitter.com/2/tweets'
+            tweet_payload = {'text': caption}
+            if media_ids:
+                tweet_payload['media'] = {'media_ids': media_ids}
+
+            auth_hdr = _oauth1_header(
+                'POST', tweet_url, {},
+                api_key, api_secret, access_token, token_secret,
+            )
+            _, resp = _json_post(tweet_url, tweet_payload, headers={'Authorization': auth_hdr})
+
+            if resp.get('data', {}).get('id'):
+                self._log_social(
+                    'twitter', 'sent',
+                    'tweet_id=%s (%d media)' % (resp['data']['id'], len(media_ids)),
+                )
+            else:
+                self._log_social('twitter', 'error', str(resp))
+
+        except Exception as e:
+            _logger.error('DPF Twitter error: %s', e)
+            self._log_social('twitter', 'error', str(e))
 
 
 class NewsPostImage(models.Model):
