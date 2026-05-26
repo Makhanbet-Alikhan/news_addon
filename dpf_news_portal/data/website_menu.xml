@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="website_menu_news" model="website.menu">
+            <field name="name">News</field>
+            <field name="url">/news</field>
+            <field name="parent_id" ref="website.main_menu"/>
+            <field name="sequence">60</field>
+        </record>
+        <record id="website_menu_announcements" model="website.menu">
+            <field name="name">Announcements</field>
+            <field name="url">/announcements</field>
+            <field name="parent_id" ref="website.main_menu"/>
+            <field name="sequence">61</field>
+        </record>
+        <record id="website_menu_pre_releases" model="website.menu">
+            <field name="name">Pre-releases</field>
+            <field name="url">/pre-releases</field>
+            <field name="parent_id" ref="website.main_menu"/>
+            <field name="sequence">62</field>
+        </record>
+    </data>
+</odoo>

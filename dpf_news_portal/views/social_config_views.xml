@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── DPF Social Config ──────────────────────────────────────────── -->
+    <record id="view_dpf_social_config_form" model="ir.ui.view">
+        <field name="name">dpf.social.config.form</field>
+        <field name="model">dpf.social.config</field>
+        <field name="arch" type="xml">
+            <form string="Social Media Settings">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Social Media Auto-Publish Settings</h1>
+                        <p class="text-muted">
+                            Configure which platforms receive a post whenever a news article is published.
+                        </p>
+                    </div>
+
+                    <!-- TELEGRAM -->
+                    <group string="📨 Telegram (Direct Bot API)" col="1">
+                        <group col="2">
+                            <field name="telegram_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <group col="2" invisible="not telegram_enabled">
+                            <field name="telegram_bot_token" password="True"
+                                   placeholder="110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw"/>
+                            <field name="telegram_chat_id"
+                                   placeholder="@your_channel  or  -1001234567890"/>
+                        </group>
+                        <div invisible="not telegram_enabled" class="alert alert-info" role="alert">
+                            <strong>How to set up:</strong><br/>
+                            1. Open Telegram → search <b>@BotFather</b> → /newbot → copy token above.<br/>
+                            2. Add the bot as <b>Admin</b> to your channel.<br/>
+                            3. Forward any channel message to <b>@userinfobot</b> to get the chat_id.<br/>
+                            4. Enable the toggle and save. ✅
+                        </div>
+                    </group>
+
+                    <!-- FACEBOOK -->
+                    <group string="📘 Facebook (via Odoo Social Marketing)" col="1">
+                        <group col="2">
+                            <field name="facebook_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <div invisible="not facebook_enabled" class="alert alert-info" role="alert">
+                            <strong>Requires:</strong> Odoo <b>Social Marketing</b> app installed.<br/>
+                            1. Go to <b>Social Marketing → Accounts → New</b>.<br/>
+                            2. Select <b>Facebook</b> and connect your Page via OAuth.<br/>
+                            3. Enable the toggle here and save. ✅
+                        </div>
+                    </group>
+
+                    <!-- INSTAGRAM -->
+                    <group string="📸 Instagram (via Odoo Social Marketing)" col="1">
+                        <group col="2">
+                            <field name="instagram_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <div invisible="not instagram_enabled" class="alert alert-info" role="alert">
+                            <strong>Requires:</strong> Odoo <b>Social Marketing</b> app + a Facebook Business Page linked to your Instagram.<br/>
+                            1. Go to <b>Social Marketing → Accounts → New</b>.<br/>
+                            2. Select <b>Instagram</b> and connect via Facebook OAuth.<br/>
+                            3. Enable the toggle here and save. ✅
+                        </div>
+                    </group>
+
+                    <!-- TWITTER -->
+                    <group string="🐦 Twitter / X (via Odoo Social Marketing)" col="1">
+                        <group col="2">
+                            <field name="twitter_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <div invisible="not twitter_enabled" class="alert alert-info" role="alert">
+                            <strong>Requires:</strong> Odoo <b>Social Marketing</b> app + Twitter/X Developer App (API v2).<br/>
+                            1. Go to <b>Social Marketing → Accounts → New</b>.<br/>
+                            2. Select <b>Twitter</b> and connect via OAuth.<br/>
+                            3. Enable the toggle here and save. ✅
+                        </div>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dpf_social_config" model="ir.actions.act_window">
+        <field name="name">Social Settings</field>
+        <field name="res_model">dpf.social.config</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'create': False}</field>
+    </record>
+
+    <!-- ── News Social Log ────────────────────────────────────────────── -->
+    <record id="view_news_social_log_list" model="ir.ui.view">
+        <field name="name">news.social.log.list</field>
+        <field name="model">news.social.log</field>
+        <field name="arch" type="xml">
+            <list string="Social Publish Log" create="false" delete="false" edit="false">
+                <field name="create_date" string="Sent At"/>
+                <field name="post_id" string="News Post"/>
+                <field name="channel"/>
+                <field name="status"/>
+                <field name="message"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_news_social_log" model="ir.actions.act_window">
+        <field name="name">Social Publish Log</field>
+        <field name="res_model">news.social.log</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="dpf_social_config_default" model="dpf.social.config">
+            <field name="name">DPF Social Config</field>
+            <field name="telegram_enabled" eval="False"/>
+            <field name="facebook_enabled" eval="False"/>
+            <field name="instagram_enabled" eval="False"/>
+            <field name="twitter_enabled" eval="False"/>
+        </record>
+    </data>
+</odoo>
