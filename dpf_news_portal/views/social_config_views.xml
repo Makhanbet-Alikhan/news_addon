@@ -77,11 +77,14 @@
         </field>
     </record>
 
+    <!-- FIX: target='inline' is not a valid value in Odoo 19 act_window.
+         Valid values: current, new, fullscreen, main.
+         Using 'current' so the config opens inline in the main content area. -->
     <record id="action_dpf_social_config" model="ir.actions.act_window">
         <field name="name">Social Settings</field>
         <field name="res_model">dpf.social.config</field>
         <field name="view_mode">form</field>
-        <field name="target">inline</field>
+        <field name="target">current</field>
         <field name="context">{'create': False}</field>
     </record>
 
