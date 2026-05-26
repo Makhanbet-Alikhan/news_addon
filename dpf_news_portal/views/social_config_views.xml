@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ── DPF Social Config ──────────────────────────────────────────── -->
+    <!-- ── DPF Social Config form ────────────────────────────────────────── -->
     <record id="view_dpf_social_config_form" model="ir.ui.view">
         <field name="name">dpf.social.config.form</field>
         <field name="model">dpf.social.config</field>
@@ -23,13 +23,14 @@
                             <field name="telegram_bot_token" password="True"
                                    placeholder="110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw"/>
                             <field name="telegram_chat_id"
-                                   placeholder="@your_channel  or  -1001234567890"/>
+                                   placeholder="@dpf_events_checke  or  -1001234567890"/>
                         </group>
                         <div invisible="not telegram_enabled" class="alert alert-info" role="alert">
                             <strong>How to set up:</strong><br/>
                             1. Open Telegram → search <b>@BotFather</b> → /newbot → copy token above.<br/>
                             2. Add the bot as <b>Admin</b> to your channel.<br/>
-                            3. Forward any channel message to <b>@userinfobot</b> to get the chat_id.<br/>
+                            3. Chat ID for a public channel: just write <b>@channel_username</b> (e.g. @dpf_events_checke).<br/>
+                               For private channels: forward any message to <b>@userinfobot</b> to get the numeric chat_id.<br/>
                             4. Enable the toggle and save. ✅
                         </div>
                     </group>
@@ -77,15 +78,31 @@
         </field>
     </record>
 
-    <!-- FIX: target='inline' is not a valid value in Odoo 19 act_window.
-         Valid values: current, new, fullscreen, main.
-         Using 'current' so the config opens inline in the main content area. -->
-    <record id="action_dpf_social_config" model="ir.actions.act_window">
-        <field name="name">Social Settings</field>
-        <field name="res_model">dpf.social.config</field>
-        <field name="view_mode">form</field>
-        <field name="target">current</field>
-        <field name="context">{'create': False}</field>
+    <!--
+        FIX: The action now uses a server action to always open the singleton
+        record via _get_config(). Without res_id the form opened as a NEW
+        (unsaved) record — each Save created a duplicate row, and on
+        reload the user saw an empty form again.
+
+        We use ir.actions.server + code so the singleton id is resolved
+        at runtime rather than hardcoded in XML.
+    -->
+    <record id="action_dpf_social_config" model="ir.actions.server">
+        <field name="name">Open Social Settings</field>
+        <field name="model_id" ref="model_dpf_social_config"/>
+        <field name="state">code</field>
+        <field name="code">
+config = env['dpf.social.config']._get_config()
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Social Media Settings',
+    'res_model': 'dpf.social.config',
+    'view_mode': 'form',
+    'res_id': config.id,
+    'target': 'current',
+    'context': {'create': False, 'delete': False},
+}
+        </field>
     </record>
 
     <!-- ── News Social Log ────────────────────────────────────────────── -->
