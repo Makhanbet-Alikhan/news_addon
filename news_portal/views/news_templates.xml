@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<!-- ═══════════════════════════════════════════════════
+     NEWS LIST PAGE  /news
+════════════════════════════════════════════════════ -->
+<template id="news_list_page" name="News List">
+    <t t-call="website.layout">
+        <t t-set="pageName" t-value="'news'"/>
+        <div id="wrap" class="np-wrap">
+
+            <!-- Hero banner -->
+            <section class="np-hero">
+                <div class="np-hero__inner">
+                    <h1 class="np-hero__title">Новости</h1>
+                    <p class="np-hero__sub">Последние события и публикации</p>
+                </div>
+            </section>
+
+            <!-- News grid -->
+            <section class="np-section">
+                <div class="np-container">
+                    <t t-if="not posts">
+                        <div class="np-empty">
+                            <i class="fa fa-newspaper-o np-empty__icon"/>
+                            <p>Новостей пока нет</p>
+                        </div>
+                    </t>
+                    <div t-else="" class="np-grid">
+                        <t t-foreach="posts" t-as="post">
+                            <a t-attf-href="/news/#{post.id}" class="np-card">
+                                <!-- Thumbnail (first image) -->
+                                <div class="np-card__thumb">
+                                    <t t-if="post.image_ids">
+                                        <img t-attf-src="/web/image/news.post.image/#{post.image_ids[0].id}/image"
+                                             t-att-alt="post.name"
+                                             loading="lazy"
+                                             class="np-card__img"/>
+                                    </t>
+                                    <div t-else="" class="np-card__img np-card__img--placeholder">
+                                        <i class="fa fa-image"/>
+                                    </div>
+                                </div>
+                                <!-- Meta -->
+                                <div class="np-card__body">
+                                    <time t-attf-datetime="#{post.date}"
+                                          class="np-card__date">
+                                        <t t-out="post.date.strftime('%d.%m.%Y')"/>
+                                    </time>
+                                    <h2 class="np-card__title" t-out="post.name"/>
+                                    <p class="np-card__excerpt" t-out="post.excerpt"/>
+                                </div>
+                            </a>
+                        </t>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+        <!-- Пагинация — добавить в конец news_list_page, ничего остального не менять -->
+        <t t-if="total_pages and total_pages > 1">
+            <div class="news-pagination" style="display:flex; justify-content:center; align-items:center; gap:4px; margin:40px 0; flex-wrap:wrap;">
+
+                <!-- Кнопка «Назад» -->
+                <a t-if="page > 1"
+                t-attf-href="/news?page=#{page - 1}"
+                style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; color:#333;">
+                    ‹
+                </a>
+
+                <!-- Первая страница -->
+                <a t-attf-href="/news?page=1"
+                t-attf-style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; #{' background:#d8b055; color:#fff; font-weight:bold;' if page == 1 else 'color:#333;'}">
+                    1
+                </a>
+
+                <!-- Многоточие слева -->
+                <span t-if="page > 4"
+                    style="padding:6px 8px; color:#999;">…</span>
+
+                <!-- Страницы вокруг текущей (кроме первой и последней) -->
+                <t t-foreach="range(2, total_pages)" t-as="p">
+                    <t t-if="p >= page - 2 and p &lt;= page + 2">
+                        <a t-attf-href="/news?page=#{p}"
+                        t-attf-style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; #{'background:#d8b055; color:#fff; font-weight:bold;' if p == page else 'color:#333;'}">
+                            <t t-esc="p"/>
+                        </a>
+                    </t>
+                </t>
+
+                <!-- Многоточие справа -->
+                <span t-if="page &lt; total_pages - 3"
+                    style="padding:6px 8px; color:#999;">…</span>
+
+                <!-- Последняя страница -->
+                <a t-if="total_pages > 1"
+                t-attf-href="/news?page=#{total_pages}"
+                t-attf-style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; #{'background:#d8b055; color:#fff; font-weight:bold;' if page == total_pages else 'color:#333;'}">
+                    <t t-esc="total_pages"/>
+                </a>
+
+                <!-- Кнопка «Вперёд» -->
+                <a t-if="page &lt; total_pages"
+                t-attf-href="/news?page=#{page + 1}"
+                style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; text-decoration:none; color:#333;">
+                    ›
+                </a>
+
+            </div>
+            <p style="text-align:center; color:#999; font-size:13px; margin-bottom:30px;">
+                Страница <t t-esc="page"/> из <t t-esc="total_pages"/>
+            </p>
+        </t>
+    </t>
+    
+</template>
+
+
+<!-- ═══════════════════════════════════════════════════
+     NEWS DETAIL PAGE  /news/<id>
+════════════════════════════════════════════════════ -->
+<template id="news_detail_page" name="News Detail">
+    <t t-call="website.layout">
+
+        <div id="wrap" class="np-wrap">
+
+            <!-- Breadcrumb -->
+            <div class="np-breadcrumb">
+                <div class="np-container">
+                    <a href="/news">Новости</a>
+                    <span class="np-breadcrumb__sep">/</span>
+                    <span t-out="post.name"/>
+                </div>
+            </div>
+
+            <!-- Article -->
+            <article class="np-article np-container">
+
+                <!-- Title + date -->
+                <header class="np-article__header">
+                    <time t-attf-datetime="#{post.date}" class="np-article__date">
+                        <t t-out="post.date.strftime('%d.%m.%Y')"/>
+                    </time>
+                    <h1 class="np-article__title" t-out="post.name"/>
+                </header>
+
+                <!-- Gallery (only when images exist) -->
+                <t t-if="images">
+
+                    <!-- ══ РЕЖИМ: основное + миниатюры СПРАВА ══ -->
+                    <t t-if="layout == 'side' or not layout">
+                        <div class="news-gallery-side"
+                            t-attf-style="display:flex; gap:8px; width:100%; margin-bottom:24px;">
+
+                            <!-- Основное фото -->
+                            <div t-attf-style="width:#{main_w or 70}%; flex-shrink:0;">
+                                <img id="news-main-img"
+                                    t-attf-src="/web/image/news.post.image/#{images[0].id}/image"
+                                    style="width:100%; height:500px; object-fit:cover; border-radius:6px; cursor:pointer;"
+                                    alt=""/>
+                            </div>
+
+                            <!-- Миниатюры справа -->
+                            <div t-attf-style="width:#{100 - (main_w or 70)}%; display:flex; flex-direction:column; gap:6px; overflow-y:auto; max-height:500px;">
+                                <t t-foreach="images" t-as="img">
+                                    <img t-attf-src="/web/image/news.post.image/#{img.id}/image"
+                                        t-attf-data-src="/web/image/news.post.image/#{img.id}/image"
+                                        t-attf-data-index="#{img_index}"
+                                        onclick="newsGallerySwitch(this)"
+                                        t-attf-style="width:100%; height:#{thumb_h or 120}px; object-fit:cover; border-radius:4px; cursor:pointer; border:2px solid #{'#d8b055' if img_index == 0 else 'transparent'};"
+                                        alt=""/>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- ══ РЕЖИМ: основное + миниатюры СНИЗУ ══ -->
+                    <t t-if="layout == 'bottom'">
+                        <div style="width:100%; margin-bottom:24px;">
+
+                            <!-- Основное фото -->
+                            <img id="news-main-img"
+                                t-attf-src="/web/image/news.post.image/#{images[0].id}/image"
+                                t-attf-style="width:100%; height:#{main_h or 500}px; object-fit:cover; border-radius:6px; cursor:pointer; margin-bottom:10px;"
+                                alt=""/>
+
+                            <!-- Миниатюры снизу — горизонтальный скролл -->
+                            <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px;">
+                                <t t-foreach="images" t-as="img">
+                                    <img t-attf-src="/web/image/news.post.image/#{img.id}/image"
+                                        t-attf-data-src="/web/image/news.post.image/#{img.id}/image"
+                                        t-attf-data-index="#{img_index}"
+                                        onclick="newsGallerySwitch(this)"
+                                        t-attf-style="flex-shrink:0; height:#{thumb_h or 120}px; width:auto; object-fit:cover; border-radius:4px; cursor:pointer; border:2px solid #{'#d8b055' if img_index == 0 else 'transparent'};"
+                                        alt=""/>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+
+                </t>
+
+                <!-- JS переключения фото -->
+                <script>
+                function newsGallerySwitch(thumb) {
+                    var mainImg = document.getElementById('news-main-img');
+                    if (!mainImg) return;
+                    var oldSrc = mainImg.src;
+                    var newSrc = thumb.dataset.src;
+                    // Подсветка активной миниатюры
+                    document.querySelectorAll('[data-index]').forEach(function(el) {
+                        el.style.border = '2px solid transparent';
+                    });
+                    thumb.style.border = '2px solid #d8b055';
+                    // Плавная смена
+                    mainImg.style.opacity = '0';
+                    mainImg.style.transition = 'opacity 0.2s';
+                    setTimeout(function() {
+                        mainImg.src = newSrc;
+                        thumb.src = oldSrc;
+                        thumb.dataset.src = oldSrc;
+                        mainImg.style.opacity = '1';
+                    }, 200);
+                }
+                </script>
+
+                <!-- Rich text content -->
+                <div class="np-article__content" t-out="post.content"/>
+
+            </article>
+
+        </div>
+    </t>
+</template>
+
+</odoo>

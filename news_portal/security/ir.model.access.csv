@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_news_post_user,news.post user,model_news_post,base.group_user,1,1,1,1
+access_news_post_public,news.post public,model_news_post,,1,0,0,0
+access_news_post_image_user,news.post.image user,model_news_post_image,base.group_user,1,1,1,1
+access_news_post_image_public,news.post.image public,model_news_post_image,,1,0,0,0
