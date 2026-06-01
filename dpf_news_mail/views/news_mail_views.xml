@@ -8,7 +8,7 @@
         <field name="inherit_id" ref="dpf_news.view_news_post_form"/>
         <field name="arch" type="xml">
 
-            <!-- Add action buttons and mail_sent badge to the form header -->
+            <!-- Buttons and mail_sent badge in the form header -->
             <xpath expr="//header" position="inside">
 
                 <!-- Send to selected companies (visible only when companies are chosen) -->
@@ -30,7 +30,7 @@
                     icon="fa-envelope-o"
                     confirm="Send email notification to ALL active subscriber companies?"/>
 
-                <!-- Read-only badge showing whether notification has been sent -->
+                <!-- Read-only badge: whether any notification has been sent -->
                 <field
                     name="mail_sent"
                     widget="boolean_toggle"
@@ -40,11 +40,11 @@
 
             </xpath>
 
-            <!-- Add Email Notifications tab inside the notebook -->
+            <!-- Add two new tabs into the existing notebook -->
             <xpath expr="//notebook" position="inside">
-                <page string="Email Notifications" name="email_notifications">
 
-                    <!-- Checkbox list of all active subscriber companies -->
+                <!-- Tab 1: select companies + instructions -->
+                <page string="Email Notifications" name="email_notifications">
                     <group string="Select Companies to Notify on Publish">
                         <field
                             name="notify_company_ids"
@@ -52,22 +52,51 @@
                             widget="many2many_checkboxes"
                             domain="[('active','=',True)]"/>
                     </group>
-
-                    <!-- Usage instructions for the editor -->
                     <div class="alert alert-info mt-2" role="alert">
                         <strong>How email notifications work:</strong>
                         <ul class="mb-0 mt-1">
                             <li>Check companies above to select them for notification.</li>
                             <li>When you click <b>Publish</b>, all checked companies receive an email automatically.</li>
                             <li>Use <b>Send to Selected</b> to manually resend to checked companies.</li>
-                            <li>Use <b>Send to All Companies</b> to notify every active subscriber regardless of selection.</li>
-                            <li>The <b>Notified</b> badge in the header confirms that at least one email was sent.</li>
+                            <li>Use <b>Send to All Companies</b> to notify every active subscriber.</li>
+                            <li>The <b>Notified</b> badge confirms that at least one email was sent.</li>
+                            <li>Check the <b>Send Log</b> tab to verify delivery status per company.</li>
                         </ul>
                     </div>
-
+                    <div class="alert alert-warning mt-2" role="alert">
+                        <strong>&#9888; Email not arriving?</strong>
+                        Make sure an outgoing mail server is configured:<br/>
+                        <b>Settings &#8594; Technical &#8594; Outgoing Mail Servers</b>
+                    </div>
                 </page>
-            </xpath>
 
+                <!-- Tab 2: send log -->
+                <page string="Send Log" name="send_log">
+                    <field name="mail_log_ids" nolabel="1" readonly="1">
+                        <list decoration-success="status == 'sent'"
+                              decoration-danger="status == 'failed'"
+                              default_order="create_date desc">
+                            <field name="create_date" string="Sent At"/>
+                            <field name="company_name" string="Company"/>
+                            <field name="email_to" string="Email"/>
+                            <field name="triggered_by" string="Triggered By"/>
+                            <field name="status" string="Status"
+                                widget="badge"
+                                decoration-success="status == 'sent'"
+                                decoration-danger="status == 'failed'"/>
+                            <field name="error_message" string="Error" optional="show"/>
+                        </list>
+                    </field>
+                    <div class="alert alert-info mt-2" role="alert">
+                        <strong>Send Log</strong> records every email attempt for this news post.
+                        If status is <b style="color:#dc3545;">Failed</b>, expand the
+                        <b>Error</b> column to see the exact error message.
+                        Most common cause: outgoing mail server not configured —
+                        go to <b>Settings &#8594; Technical &#8594; Outgoing Mail Servers</b>.
+                    </div>
+                </page>
+
+            </xpath>
         </field>
     </record>
 
