@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── dpf.social.config standalone form ── -->
+    <record id="view_dpf_social_config_form" model="ir.ui.view">
+        <field name="name">dpf.social.config.form</field>
+        <field name="model">dpf.social.config</field>
+        <field name="arch" type="xml">
+            <form string="Social Media Settings">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Social Media Auto-Publish Settings</h1>
+                        <p class="text-muted">
+                            All integrations use direct public APIs — no Odoo Enterprise required.
+                        </p>
+                    </div>
+
+                    <group string="📨 Telegram (Direct Bot API)" col="1">
+                        <group col="2">
+                            <field name="telegram_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <group col="2" invisible="not telegram_enabled">
+                            <field name="telegram_bot_token" password="True"
+                                   placeholder="110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw"/>
+                            <field name="telegram_chat_id"
+                                   placeholder="@your_channel  or  -100123456789"/>
+                        </group>
+                        <div invisible="not telegram_enabled" class="alert alert-info" role="alert">
+                            1. Create bot via <b>@BotFather</b> → /newbot → copy token.<br/>
+                            2. Add bot as <b>Admin</b> to your channel.<br/>
+                            3. Chat ID: public channel = <b>@channel_username</b>; private = use @userinfobot.
+                        </div>
+                    </group>
+
+                    <group string="📘 Facebook (Graph API v19 — free)" col="1">
+                        <group col="2">
+                            <field name="facebook_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <group col="2" invisible="not facebook_enabled">
+                            <field name="facebook_page_id" placeholder="123456789012345"/>
+                            <field name="facebook_page_token" password="True"
+                                   placeholder="EAAxxxxxxxxxxxxxxxx..."/>
+                        </group>
+                        <div invisible="not facebook_enabled" class="alert alert-info" role="alert">
+                            1. Go to <b>developers.facebook.com</b> → My Apps → create App (type: Business).<br/>
+                            2. Add product <b>Facebook Login for Business</b>.<br/>
+                            3. Open <b>Graph API Explorer</b> → generate <b>Page Access Token</b>.<br/>
+                            4. Permissions: <code>pages_manage_posts</code>, <code>pages_read_engagement</code>.
+                        </div>
+                    </group>
+
+                    <group string="📸 Instagram (Graph API v19 — Business account required)" col="1">
+                        <group col="2">
+                            <field name="instagram_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <group col="2" invisible="not instagram_enabled">
+                            <field name="instagram_account_id" placeholder="17841400008460056"/>
+                            <field name="instagram_page_token" password="True"
+                                   placeholder="EAAxxxxxxxxxxxxxxxx..."/>
+                        </group>
+                        <div invisible="not instagram_enabled" class="alert alert-warning" role="alert">
+                            <strong>⚠️ Requires public server URL.</strong>
+                            Instagram fetches images by URL — <b>localhost will not work</b>.<br/>
+                            For local testing use <b>ngrok</b>: <code>ngrok http 8070</code>.
+                        </div>
+                    </group>
+
+                    <group string="🐦 Twitter / X (API v2, OAuth 1.0a — free tier)" col="1">
+                        <group col="2">
+                            <field name="twitter_enabled" widget="boolean_toggle"/>
+                        </group>
+                        <group col="2" invisible="not twitter_enabled">
+                            <field name="twitter_api_key"             password="True" placeholder="API Key"/>
+                            <field name="twitter_api_secret"          password="True" placeholder="API Secret"/>
+                            <field name="twitter_access_token"        password="True" placeholder="Access Token"/>
+                            <field name="twitter_access_token_secret" password="True" placeholder="Access Token Secret"/>
+                        </group>
+                        <div invisible="not twitter_enabled" class="alert alert-info" role="alert">
+                            1. Go to <b>developer.twitter.com</b> → Projects &amp; Apps → New App.<br/>
+                            2. Enable OAuth 1.0a with <b>Read and Write</b>.<br/>
+                            3. Generate all 4 keys and paste them above.
+                        </div>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Встроить в General Settings (Odoo 19 структура) ── -->
+    <record id="view_res_config_settings_social_inherit" model="ir.ui.view">
+        <field name="name">res.config.settings.social.inherit</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="DPF News Social" name="dpf_news_social"
+                     logo="/dpf_news_social/static/description/icon.svg"
+                     groups="base.group_system">
+                    <block title="Social Media Auto-Publish" name="dpf_social_block">
+                        <setting string="Social Media Channels"
+                                 help="Configure Telegram, Facebook, Instagram and Twitter/X.">
+                            <button name="action_open_dpf_social_config"
+                                    type="object"
+                                    string="⚙️ Configure Channels"
+                                    class="btn-secondary"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ── Server action: открыть singleton config (только Admin) ── -->
+    <record id="action_dpf_social_config" model="ir.actions.server">
+        <field name="name">Open Social Settings</field>
+        <field name="model_id" ref="model_dpf_social_config"/>
+        <field name="state">code</field>
+        <field name="code">
+config = env['dpf.social.config']._get_config()
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Social Media Settings',
+    'res_model': 'dpf.social.config',
+    'view_mode': 'form',
+    'res_id': config.id,
+    'target': 'current',
+    'context': {'create': False, 'delete': False},
+}
+        </field>
+    </record>
+
+    <!-- ── Social Log list ── -->
+    <record id="view_news_social_log_list" model="ir.ui.view">
+        <field name="name">news.social.log.list</field>
+        <field name="model">news.social.log</field>
+        <field name="arch" type="xml">
+            <list string="Social Publish Log" create="false" delete="false" edit="false">
+                <field name="create_date" string="Sent At"/>
+                <field name="post_id"     string="News Post"/>
+                <field name="channel"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'sent'"
+                       decoration-danger="status == 'error'"/>
+                <field name="message"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_news_social_log" model="ir.actions.act_window">
+        <field name="name">Social Publish Log</field>
+        <field name="res_model">news.social.log</field>
+        <field name="view_mode">list</field>
+    </record>
+
+</odoo>

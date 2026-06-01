@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <menuitem id="menu_news_main_app" name="News Portal" sequence="150" web_icon="dpf_news,static/description/icon.svg"/>
+        <menuitem id="menu_news_posts" name="Posts" parent="menu_news_main_app" sequence="10"/>
+        <menuitem id="menu_news_all_posts" name="All Posts" parent="menu_news_posts" action="dpf_news.action_news_post" sequence="5"/>
+    </data>
+</odoo>

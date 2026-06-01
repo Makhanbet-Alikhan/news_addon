@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_news_social_preview_wizard_form" model="ir.ui.view">
+        <field name="name">news.social.preview.wizard.form</field>
+        <field name="model">news.social.preview.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Publish to Social Media">
+                <sheet>
+                    <group>
+                        <field name="post_id" readonly="1"/>
+                    </group>
+                    <div class="o_setting_box" style="width:100%; margin-bottom:12px;">
+                        <label for="caption" string="📨 Telegram Message Preview" class="fw-bold d-block mb-2"/>
+                        <div class="alert alert-info mb-2" role="alert">
+                            This is exactly what will be sent to Telegram.
+                            Facebook / Instagram / Twitter use a similar short text + link format.
+                        </div>
+                        <field name="caption" widget="text" nolabel="1"
+                               style="width:100%; min-height:180px; font-family:monospace; background:#f8f9fa; border-radius:6px; padding:10px; box-sizing:border-box; display:block;"/>
+                    </div>
+                    <group string="📢 Send to Channels">
+                        <field name="send_telegram"/>
+                        <field name="send_facebook"/>
+                        <field name="send_instagram"/>
+                        <field name="send_twitter"/>
+                    </group>
+                    <footer>
+                        <button name="action_publish" type="object"
+                                string="Send" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

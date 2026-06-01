@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        FIX: noupdate="0" (was "1").
+        With noupdate="1" Odoo never re-applied this record after the first
+        install, so fields saved by the user were wiped back to defaults on
+        every module upgrade.
+        With noupdate="0" the INITIAL defaults are written only once on first
+        install; subsequent upgrades do NOT touch this record because Odoo
+        only resets records when the module is *uninstalled* and reinstalled.
+        User edits therefore survive upgrades.
+
+        Note: the singleton CHECK constraint (id=1) in social_config.py
+        prevents any second row being created accidentally.
+    -->
+    <data noupdate="0">
+        <record id="dpf_social_config_default" model="dpf.social.config">
+            <field name="name">DPF Social Config</field>
+            <field name="telegram_enabled" eval="False"/>
+            <field name="facebook_enabled" eval="False"/>
+            <field name="instagram_enabled" eval="False"/>
+            <field name="twitter_enabled" eval="False"/>
+        </record>
+    </data>
+</odoo>

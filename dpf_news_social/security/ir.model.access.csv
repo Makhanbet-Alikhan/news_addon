@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dpf_social_config_manager,dpf.social.config manager,model_dpf_social_config,base.group_system,1,1,1,1
+access_dpf_social_config_user,dpf.social.config user,model_dpf_social_config,base.group_user,1,0,0,0
+access_news_social_log_user,news.social.log user,model_news_social_log,base.group_user,1,1,1,1
+access_news_social_log_public,news.social.log public,model_news_social_log,,1,0,0,0
+access_news_social_wizard_user,news.social.preview.wizard user,model_news_social_preview_wizard,base.group_user,1,1,1,1

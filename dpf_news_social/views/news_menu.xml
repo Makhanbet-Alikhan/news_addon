@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <menuitem id="menu_news_social" name="Social" parent="dpf_news.menu_news_main_app" sequence="20"/>
+        <menuitem id="menu_news_social_log" name="Publish Log" parent="menu_news_social"
+                  action="dpf_news_social.action_news_social_log" sequence="20"/>
+    </data>
+</odoo>

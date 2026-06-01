@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── Inherit form view: add social button, fields, log tab ── -->
+    <record id="view_news_post_form_social_inherit" model="ir.ui.view">
+        <field name="name">news.post.form.social.inherit</field>
+        <field name="model">news.post</field>
+        <field name="inherit_id" ref="dpf_news.view_news_post_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_social_wizard" type="object"
+                        string="📢 Send to Social" class="btn-secondary"
+                        invisible="not is_published"/>
+            </xpath>
+            <xpath expr="//group[group/field[@name='date']]/group[2]" position="inside">
+                <field name="social_auto_publish" widget="boolean_toggle"/>
+                <field name="social_status" widget="badge"
+                       decoration-success="social_status == 'sent'"
+                       decoration-warning="social_status == 'partial'"
+                       decoration-danger="social_status == 'error'"
+                       decoration-muted="social_status == 'not_sent'"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Social Log" name="social_log">
+                    <div class="alert alert-info" role="alert" invisible="social_log_ids">
+                        No social publish history yet. The log appears here after publishing.
+                    </div>
+                    <field name="social_log_ids" readonly="1" nolabel="1">
+                        <list create="false" delete="false" edit="false">
+                            <field name="create_date" string="Sent At"/>
+                            <field name="channel"/>
+                            <field name="status" widget="badge"
+                                   decoration-success="status == 'sent'"
+                                   decoration-danger="status == 'error'"/>
+                            <field name="message" string="Details"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ── Inherit list view: add social_status badge column ── -->
+    <record id="view_news_post_list_social_inherit" model="ir.ui.view">
+        <field name="name">news.post.list.social.inherit</field>
+        <field name="model">news.post</field>
+        <field name="inherit_id" ref="dpf_news.view_news_post_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_published']" position="after">
+                <field name="social_status" widget="badge" string="Social"
+                       decoration-success="social_status == 'sent'"
+                       decoration-warning="social_status == 'partial'"
+                       decoration-danger="social_status == 'error'"
+                       decoration-muted="social_status == 'not_sent'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
