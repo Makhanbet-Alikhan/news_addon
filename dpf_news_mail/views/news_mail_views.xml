@@ -1,65 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Extend the news.post form to add email notification fields -->
+
+    <!-- Extend news.post form view to add email notification controls -->
     <record id="view_news_post_form_mail_inherit" model="ir.ui.view">
         <field name="name">news.post.form.mail.inherit</field>
         <field name="model">news.post</field>
         <field name="inherit_id" ref="dpf_news.view_news_post_form"/>
         <field name="arch" type="xml">
-            <!-- Add send buttons in header -->
+
+            <!-- Add action buttons and mail_sent badge to the form header -->
             <xpath expr="//header" position="inside">
+
+                <!-- Send to selected companies (visible only when companies are chosen) -->
                 <button
-                    name="action_send_selected_companies"
+                    name="action_send_to_selected"
                     type="object"
                     string="Send to Selected"
                     class="btn-primary"
                     icon="fa-envelope"
                     invisible="not notify_company_ids"
-                    confirm="Send email notification to selected companies?"/>
+                    confirm="Send email notification to the selected companies?"/>
+
+                <!-- Send to ALL active subscriber companies -->
                 <button
-                    name="action_send_all_companies"
+                    name="action_send_to_all"
                     type="object"
                     string="Send to All Companies"
                     class="btn-secondary"
                     icon="fa-envelope-o"
                     confirm="Send email notification to ALL active subscriber companies?"/>
+
+                <!-- Read-only badge showing whether notification has been sent -->
                 <field
                     name="mail_sent"
                     widget="boolean_toggle"
                     nolabel="1"
                     readonly="1"
                     options="{'terminology': {'true_string': 'Notified', 'false_string': 'Not Sent'}}"/>
+
             </xpath>
 
-            <!-- Add new tab in notebook for email notifications -->
+            <!-- Add Email Notifications tab inside the notebook -->
             <xpath expr="//notebook" position="inside">
                 <page string="Email Notifications" name="email_notifications">
+
+                    <!-- Checkbox list of all active subscriber companies -->
                     <group string="Select Companies to Notify on Publish">
-                        <field
-                            name="notify_company_ids"
-                            nolabel="1"
-                            widget="many2many_tags"
-                            options="{'no_create': True, 'no_open': True}"
-                            placeholder="Select companies..."/>
-                    </group>
-                    <div class="alert alert-info" role="alert">
-                        <strong>How it works:</strong>
-                        <ul class="mb-0 mt-1">
-                            <li>Select companies using the field above (radio-style multi-select tags).</li>
-                            <li>When you click <b>Publish</b>, selected companies will automatically receive an email.</li>
-                            <li>Use <b>Send to Selected</b> button to manually resend to selected companies.</li>
-                            <li>Use <b>Send to All Companies</b> to send to every active subscriber.</li>
-                        </ul>
-                    </div>
-                    <group string="All Subscriber Companies" col="1">
                         <field
                             name="notify_company_ids"
                             nolabel="1"
                             widget="many2many_checkboxes"
                             domain="[('active','=',True)]"/>
                     </group>
+
+                    <!-- Usage instructions for the editor -->
+                    <div class="alert alert-info mt-2" role="alert">
+                        <strong>How email notifications work:</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>Check companies above to select them for notification.</li>
+                            <li>When you click <b>Publish</b>, all checked companies receive an email automatically.</li>
+                            <li>Use <b>Send to Selected</b> to manually resend to checked companies.</li>
+                            <li>Use <b>Send to All Companies</b> to notify every active subscriber regardless of selection.</li>
+                            <li>The <b>Notified</b> badge in the header confirms that at least one email was sent.</li>
+                        </ul>
+                    </div>
+
                 </page>
             </xpath>
+
         </field>
     </record>
+
 </odoo>

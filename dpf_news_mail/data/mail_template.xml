@@ -1,39 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="mail_template_news_notification" model="mail.template">
-        <field name="name">News Post Notification</field>
+        <field name="name">News Post - Email Notification</field>
         <field name="model_id" ref="dpf_news.model_news_post"/>
-        <field name="subject">📰 New Article: {{ object.name }}</field>
+        <field name="subject">&#128240; New Article: {{ object.name }}</field>
         <field name="body_html" type="html">
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+<div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+
+  <!-- Header -->
   <div style="background-color: #01696f; padding: 24px 32px;">
-    <h1 style="color: #ffffff; margin: 0; font-size: 22px;">📰 New Publication</h1>
+    <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 0.5px;">
+      &#128240; New Publication
+    </h1>
   </div>
-  <div style="padding: 32px;">
-    <p style="color: #555; font-size: 15px; margin-top: 0;">
-      Hello <strong t-esc="ctx.get('company_name', 'Subscriber')"/>,
+
+  <!-- Body -->
+  <div style="padding: 32px; background-color: #ffffff;">
+    <p style="color: #555555; font-size: 15px; margin-top: 0;">
+      Hello <strong><t t-esc="ctx.get('company_name', 'Subscriber')"/></strong>,
     </p>
-    <h2 style="color: #222; font-size: 20px; margin-bottom: 8px;">
+    <p style="color: #777777; font-size: 13px; margin-bottom: 4px;">
+      A new article has been published on our news portal.
+    </p>
+
+    <!-- Article title -->
+    <h2 style="color: #222222; font-size: 20px; margin: 16px 0 8px 0; border-left: 4px solid #01696f; padding-left: 12px;">
       <t t-esc="object.name"/>
     </h2>
-    <p style="color: #444; font-size: 14px; margin-bottom: 4px;">
-      <strong>Publication date:</strong> <t t-esc="object.date"/>
+
+    <!-- Publication date -->
+    <p style="color: #888888; font-size: 13px; margin-bottom: 16px;">
+      &#128197; Published: <t t-esc="object.date"/>
     </p>
-    <p style="color: #666; font-size: 14px; line-height: 1.6; margin-top: 16px;">
+
+    <!-- Excerpt -->
+    <p style="color: #444444; font-size: 14px; line-height: 1.7; padding: 16px; background-color: #f9f9f9; border-radius: 6px;">
       <t t-esc="object.excerpt"/>
     </p>
+
+    <!-- CTA Button -->
     <div style="margin-top: 28px; text-align: center;">
       <a t-attf-href="{{ object.website_url }}"
-         style="background-color: #01696f; color: #ffffff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: bold;">
-        Read Full Article
+         style="background-color: #01696f; color: #ffffff; padding: 13px 30px;
+                border-radius: 6px; text-decoration: none; font-size: 15px;
+                font-weight: bold; display: inline-block;">
+        Read Full Article &#8594;
       </a>
     </div>
   </div>
-  <div style="background-color: #f5f5f5; padding: 16px 32px; text-align: center;">
-    <p style="color: #999; font-size: 12px; margin: 0;">
+
+  <!-- Footer -->
+  <div style="background-color: #f5f5f5; padding: 16px 32px; text-align: center; border-top: 1px solid #e0e0e0;">
+    <p style="color: #aaaaaa; font-size: 11px; margin: 0;">
       You received this email because your organization is subscribed to news notifications.
     </p>
   </div>
+
 </div>
         </field>
         <field name="lang">{{ object.env.lang }}</field>

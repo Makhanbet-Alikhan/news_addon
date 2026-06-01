@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <!-- List View -->
     <record id="view_news_company_list" model="ir.ui.view">
         <field name="name">news.company.list</field>
         <field name="model">news.company</field>
         <field name="arch" type="xml">
-            <list string="Companies">
+            <list string="Subscriber Companies">
                 <field name="name"/>
                 <field name="email"/>
                 <field name="note"/>
@@ -22,7 +23,9 @@
             <form string="Subscriber Company">
                 <sheet>
                     <div class="oe_title">
-                        <h1><field name="name" placeholder="Company Name..."/></h1>
+                        <h1>
+                            <field name="name" placeholder="Company Name..."/>
+                        </h1>
                     </div>
                     <group>
                         <group>
@@ -33,7 +36,7 @@
                         </group>
                     </group>
                     <group string="Notes">
-                        <field name="note" nolabel="1" placeholder="Additional notes..."/>
+                        <field name="note" nolabel="1" placeholder="Additional notes about this subscriber..."/>
                     </group>
                 </sheet>
             </form>
@@ -45,37 +48,37 @@
         <field name="name">news.company.search</field>
         <field name="model">news.company</field>
         <field name="arch" type="xml">
-            <search string="Search Companies">
+            <search string="Search Subscriber Companies">
                 <field name="name"/>
                 <field name="email"/>
                 <filter name="active" string="Active" domain="[('active','=',True)]"/>
-                <filter name="inactive" string="Archived" domain="[('active','=',False)]"/>
+                <filter name="archived" string="Archived" domain="[('active','=',False)]"/>
             </search>
         </field>
     </record>
 
-    <!-- Action -->
+    <!-- Window Action -->
     <record id="action_news_company" model="ir.actions.act_window">
         <field name="name">Subscriber Companies</field>
         <field name="res_model">news.company</field>
         <field name="view_mode">list,form</field>
-        <field name="context">{}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Add your first subscriber company!
             </p>
             <p>
-                Companies added here will be available for selection
-                when creating news posts to receive email notifications.
+                Companies added here can be selected in news posts
+                to receive email notifications on publish.
             </p>
         </field>
     </record>
 
-    <!-- Menu items (extend DPF News menu) -->
+    <!-- Menu item — parent ID taken from dpf_news/views/news_menu.xml -->
     <menuitem
         id="menu_news_company"
         name="Subscriber Companies"
-        parent="dpf_news.menu_news_root"
+        parent="dpf_news.menu_news_main_app"
         action="action_news_company"
         sequence="20"/>
+
 </odoo>
