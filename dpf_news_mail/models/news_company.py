@@ -20,9 +20,13 @@ class NewsCompany(models.Model):
     ]
 
     @api.model
-    def name_search(self, name='', args=None, operator='ilike', limit=100):
-        """Allow searching companies by name or email."""
-        args = args or []
+    def _name_search(self, name='', domain=None, operator='ilike', limit=100, order=None):
+        """
+        Override _name_search (Odoo 17+/19 API) to allow searching
+        companies by both name and email address.
+        name_get() was removed in Odoo 17 — use _name_search + display_name instead.
+        """
+        domain = domain or []
         if name:
-            args = ['|', ('name', operator, name), ('email', operator, name)] + args
-        return self.search(args, limit=limit).name_get()
+            domain = ['|', ('name', operator, name), ('email', operator, name)] + domain
+        return self._search(domain, limit=limit, order=order)
