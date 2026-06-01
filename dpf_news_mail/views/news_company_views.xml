@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List View -->
+    <record id="view_news_company_list" model="ir.ui.view">
+        <field name="name">news.company.list</field>
+        <field name="model">news.company</field>
+        <field name="arch" type="xml">
+            <list string="Companies">
+                <field name="name"/>
+                <field name="email"/>
+                <field name="note"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_news_company_form" model="ir.ui.view">
+        <field name="name">news.company.form</field>
+        <field name="model">news.company</field>
+        <field name="arch" type="xml">
+            <form string="Subscriber Company">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Company Name..."/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="email" widget="email"/>
+                        </group>
+                        <group>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group string="Notes">
+                        <field name="note" nolabel="1" placeholder="Additional notes..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_news_company_search" model="ir.ui.view">
+        <field name="name">news.company.search</field>
+        <field name="model">news.company</field>
+        <field name="arch" type="xml">
+            <search string="Search Companies">
+                <field name="name"/>
+                <field name="email"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
+                <filter name="inactive" string="Archived" domain="[('active','=',False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_news_company" model="ir.actions.act_window">
+        <field name="name">Subscriber Companies</field>
+        <field name="res_model">news.company</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Add your first subscriber company!
+            </p>
+            <p>
+                Companies added here will be available for selection
+                when creating news posts to receive email notifications.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu items (extend DPF News menu) -->
+    <menuitem
+        id="menu_news_company"
+        name="Subscriber Companies"
+        parent="dpf_news.menu_news_root"
+        action="action_news_company"
+        sequence="20"/>
+</odoo>

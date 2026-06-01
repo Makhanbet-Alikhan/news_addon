@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mail_template_news_notification" model="mail.template">
+        <field name="name">News Post Notification</field>
+        <field name="model_id" ref="dpf_news.model_news_post"/>
+        <field name="subject">📰 New Article: {{ object.name }}</field>
+        <field name="body_html" type="html">
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+  <div style="background-color: #01696f; padding: 24px 32px;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 22px;">📰 New Publication</h1>
+  </div>
+  <div style="padding: 32px;">
+    <p style="color: #555; font-size: 15px; margin-top: 0;">
+      Hello <strong t-esc="ctx.get('company_name', 'Subscriber')"/>,
+    </p>
+    <h2 style="color: #222; font-size: 20px; margin-bottom: 8px;">
+      <t t-esc="object.name"/>
+    </h2>
+    <p style="color: #444; font-size: 14px; margin-bottom: 4px;">
+      <strong>Publication date:</strong> <t t-esc="object.date"/>
+    </p>
+    <p style="color: #666; font-size: 14px; line-height: 1.6; margin-top: 16px;">
+      <t t-esc="object.excerpt"/>
+    </p>
+    <div style="margin-top: 28px; text-align: center;">
+      <a t-attf-href="{{ object.website_url }}"
+         style="background-color: #01696f; color: #ffffff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: bold;">
+        Read Full Article
+      </a>
+    </div>
+  </div>
+  <div style="background-color: #f5f5f5; padding: 16px 32px; text-align: center;">
+    <p style="color: #999; font-size: 12px; margin: 0;">
+      You received this email because your organization is subscribed to news notifications.
+    </p>
+  </div>
+</div>
+        </field>
+        <field name="lang">{{ object.env.lang }}</field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+</odoo>
